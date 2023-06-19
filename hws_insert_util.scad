@@ -87,19 +87,19 @@ module _wall_relief(tolerance = tolerance)
 module _insert_body(tolerance = tolerance)
 {
     // Body.
-    filet_height = 0.4;
+    chamfer_height = 0.4;
     union()
     {
         difference()
         {
             union()
             {
-                _hex_prism(d = main_outer_distance, h = insert_height - filet_height, tolerance = tolerance);
-                // Top filet. 19.3(.2), 0.4.
-                translate(v = [ 0, 0, insert_height - filet_height ])
-                    _hex_prism(d = main_outer_distance, d2 = 19.3, h = filet_height, tolerance = tolerance);
+                _hex_prism(d = main_outer_distance, h = insert_height - chamfer_height, tolerance = tolerance);
+                // Top chamfer. 19.3(.2), 0.4.
+                translate(v = [ 0, 0, insert_height - chamfer_height ])
+                    _hex_prism(d = main_outer_distance, d2 = 19.3, h = chamfer_height, tolerance = tolerance);
             }
-            // Filets.
+            // Chamfer.
             for (i = [0:5])
             {
                 rotate([ 0, 0, i * 60 - 30 ])
@@ -110,8 +110,8 @@ module _insert_body(tolerance = tolerance)
             }
         }
         _hex_prism(d = lip_outer_distance, h = lip_height);
-        // TODO filet base. Requires following out edge. Reverse connector check?
-        _insert_snaps(tolerance, fillet_size = filet_height);
+        // TODO chamfer base. Requires following out edge. Reverse connector check?
+        _insert_snaps(tolerance, fillet_size = chamfer_height);
     }
 }
 
@@ -203,7 +203,7 @@ module insert_m4()
         _hex_prism(d = 7.1, h = 7);
         // + 2.7
         cylinder(h = 9.7, r = 2.1);
-        // Filet
+        // Chamfer
         translate(v = [ 0, 0, 9.7 - preview_bump ]) cylinder(h = 0.3 + 3 * preview_bump, r1 = 2.1, r2 = 2.4);
     }
 }
@@ -217,7 +217,7 @@ module insert_m5()
         _hex_prism(d = 8.1, h = 7);
         // + 2.7
         cylinder(h = 9.7, r = 2.55);
-        // Filet
+        // Chamfer
         translate(v = [ 0, 0, 9.7 - preview_bump ]) cylinder(h = 0.3 + 3 * preview_bump, r1 = 2.55, r2 = 2.85);
     }
 }
