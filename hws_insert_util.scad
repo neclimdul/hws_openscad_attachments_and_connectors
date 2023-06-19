@@ -21,19 +21,19 @@ connector_height = lip_height;
 // A tiny addition distance to add to dimensions to help the OpenSCAD preview.
 preview_bump = .002;
 
-module _draw_insert(type = 0)
+module _draw_insert(type = 0, tolerance = 0)
 {
     difference()
     {
         _insert_body(tolerance);
         // Remove type specific features.
-        _draw_features(type);
+        _draw_features(type, tolerance);
         // Add wall reliefs.
         _wall_reliefs(tolerance);
     }
 }
 
-module _draw_features(type)
+module _draw_features(type, tolerance = 0)
 {
     translate(v = [ 0, 0, -preview_bump ])
     {
@@ -50,9 +50,9 @@ module _draw_features(type)
         else if (type == 6)
             insert_m5();
         else if (type == 7)
-            insert_empty_attachment();
+            insert_empty_attachment(tolerance = tolerance);
         else if (type == 8)
-            insert_empty_attachment_countersunk();
+            insert_empty_attachment_countersunk(tolerance = tolerance);
         else
             _insert_insert();
     }
@@ -162,7 +162,7 @@ module _insert_countersunk()
     }
 }
 
-module insert_empty_attachment()
+module insert_empty_attachment(tolerance = 0)
 {
     union()
     {
@@ -172,7 +172,7 @@ module insert_empty_attachment()
     }
 }
 
-module insert_empty_attachment_countersunk()
+module insert_empty_attachment_countersunk(tolerance = 0)
 {
     union()
     {
@@ -222,7 +222,7 @@ module insert_m5()
     }
 }
 
-module _hex_prism(d, d2 = 0, h, tolerance = tolerance)
+module _hex_prism(d, d2 = 0, h, tolerance = 0)
 {
     // "cylinder" with 6 sides is our prism
     circular_radius = hex_to_circular_radius(d);

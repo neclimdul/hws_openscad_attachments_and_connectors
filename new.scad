@@ -59,7 +59,7 @@ module insert_plug_adv(structure)
                 p3 = [ x_pos + y_even - 1, y_pos + 1 ];
                 translate(v = position) union()
                 {
-                    _draw_insert(structure[y_pos][x_pos]);
+                    _draw_insert(structure[y_pos][x_pos], tolerance);
                     color("purple") _connector(structure, 30, p1, p2);
                     color("red") _connector(structure, 90, p2);
                     color("blue") _connector(structure, 150, p3, p2, true);
