@@ -239,14 +239,15 @@ module _hex_prism(d, d2 = 0, h, tolerance = 0)
 
 module _connector(structure, rotation, p, p2 = [], reversed = false)
 {
-    if (_check_connector_location(structure, p))
+    if (_checkout_location_populated(structure, p))
     {
         s1 = (lip_outer_distance / 2) - 0.001;
         s2 = -main_outer_side / 2;
         s3 = s1 + 1.102;
         s4 = -s2;
         s5 = s1 + .55005;
-        s6 = (p2 != [] && _check_connector_location(structure, p2)) ? s4 + (1.101 * sin(60)) : s4;
+        // If adjacent location populated, extend into center point.
+        s6 = (p2 != [] && _checkout_location_populated(structure, p2)) ? s4 + (1.101 * sin(60)) : s4;
         rotate(rotation) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = connector_height)
         {
             polygon(points = [[s1, s2], [s1, s4], [s5, s6], [s3, s4], [s3, s2]]);
@@ -254,7 +255,7 @@ module _connector(structure, rotation, p, p2 = [], reversed = false)
     }
 }
 
-function _check_connector_location(structure, p) =
+function _checkout_location_populated(structure, p) =
     let(x_pos = p[0], y_pos = p[1]) x_pos >= 0 && y_pos >= 0 && y_pos < len(structure) &&
     x_pos < len(structure[y_pos]) && structure[y_pos][x_pos] > 0;
 function hex_to_circular_radius(d) = d / sqrt(3) * 2;
