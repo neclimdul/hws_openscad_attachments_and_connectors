@@ -8,11 +8,20 @@ $fs = 0.25;
 tolerance = 0;
 decoration_depth = 0;
 
-// TODO
-//  - Filet the inner component
-//  - Polygon corner
-//  - Variations
-
+/**
+ * The structure array documents the layout of individual
+ *
+ * 0 - No insert
+ * 1 - Empty center
+ * 2 - Solid
+ * 3 - Countersunk
+ * 4 - m3
+ * 5 - m4
+ * 6 - m5
+ * 7 - Empty countersunk
+ * 8 - Empty countersunk 85°
+ * 9 - ...
+ */
 // structure = [ [ 0, 0, 1, 0 ], [ 0, 1, 1, 0 ], [ 1, 0, 0, 1 ] ];
 // structure = [ [ 0, 1, 0 ], [ 1, 1 ], [ 1, 1, 0 ] ];
 // structure = [ [ 2, 1, 1 ], [ 1, 2, 1 ] ];
@@ -45,40 +54,17 @@ module insert_plug_adv(structure)
             position = [ x, y, 0 ];
             if (structure[y_pos][x_pos] != 0)
             {
+                p1 = [ x_pos + y_even, y_pos + 1 ];
+                p2 = [ x_pos, y_pos + 2 ];
+                p3 = [ x_pos + y_even - 1, y_pos + 1 ];
                 translate(v = position) union()
                 {
                     _draw_insert(structure[y_pos][x_pos]);
-                    p1 = [ x_pos + y_even, y_pos + 1 ];
-                    p2 = [ x_pos, y_pos + 2 ];
-                    p3 = [ x_pos + y_even - 1, y_pos + 1 ];
                     color("purple") _connector(structure, 30, p1, p2);
                     color("red") _connector(structure, 90, p2);
-                    // TODO add reversed connector.
-                    color("blue") _connector(structure, 150, p3);
+                    color("blue") _connector(structure, 150, p3, p2, true);
                 }
             }
         }
     }
-}
-
-module _draw_insert(type = 0)
-{
-    difference()
-    {
-        _insert_body(tolerance);
-        // Remove type specific features.
-        _draw_features(type);
-        // Add wall reliefs.
-        _wall_reliefs(tolerance);
-    }
-}
-
-module _draw_features(type)
-{
-    if (type == 2)
-    {
-        // intentionaly empty
-    }
-    else
-        _insert_insert();
 }
