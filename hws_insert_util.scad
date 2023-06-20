@@ -21,15 +21,43 @@ connector_height = lip_height;
 // A tiny addition distance to add to dimensions to help the OpenSCAD preview.
 preview_bump = .002;
 
-module _draw_insert(type = 0, tolerance = 0)
+decoration_depth = 0.3;
+decoration_chamfer = decoration_depth / cos(45);
+
+module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
 {
-    difference()
+    x1 = 25.98;
+    x2 = main_outer_side;
+    y_distance = 11.8; // 47.2 / 4;
+    // Calculated horizontal separation based on 1.1mm wall separation.
+    h_s = 0.9535;
+
+    type = structure[y_pos][x_pos];
+    y_even = y_pos % 2;
+    x_offset = y_even * (x1 - 6.495 + h_s);
+    x = x_pos * (x1 + x2 + 2 * h_s) + y_even * x_offset;
+    y = y_pos * y_distance;
+    position = [ x, y, 0 ];
+    p1 = [ x_pos + y_even, y_pos + 1 ];
+    p2 = [ x_pos, y_pos + 2 ];
+    p3 = [ x_pos + y_even - 1, y_pos + 1 ];
+    translate(v = position) union()
     {
-        _insert_body(tolerance);
-        // Remove type specific features.
-        _draw_features(type, tolerance);
-        // Add wall reliefs.
-        _wall_reliefs(tolerance);
+        difference()
+        {
+            _insert_body(tolerance, decorate = decorate);
+            // Remove type specific features.
+            _draw_features(type, tolerance);
+            // Add wall reliefs.
+            _wall_reliefs(tolerance);
+        }
+        c_height = connector_height - (decorate ? decoration_depth : 0);
+        translate(v = [ 0, 0, decorate ? decoration_depth : 0 ])
+        {
+            color("purple") _connector(structure, 30, p1, p2, height = c_height);
+            color("red") _connector(structure, 90, p2, height = c_height);
+            color("blue") _connector(structure, 150, p3, p2, true, height = c_height);
+        }
     }
 }
 
@@ -84,34 +112,38 @@ module _wall_relief(tolerance = tolerance)
     }
 }
 
-module _insert_body(tolerance = tolerance)
+module _insert_body(tolerance = tolerance, decorate = decorate)
 {
     // Body.
     chamfer_height = 0.4;
-    union()
+    difference()
     {
-        difference()
+        union()
         {
-            union()
+            _hex_prism(d = main_outer_distance, h = insert_height - chamfer_height, tolerance = tolerance);
+            // Top chamfer. 19.3(.2), 0.4.
+            translate(v = [ 0, 0, insert_height - chamfer_height ])
+                _hex_prism(d = main_outer_distance, d2 = 19.3, h = chamfer_height, tolerance = tolerance);
+            _hex_prism(d = lip_outer_distance, h = lip_height);
+            _insert_snaps(tolerance, fillet_size = chamfer_height);
+        }
+        for (i = [0:5])
+        {
+            rotate([ 0, 0, i * 60 - 30 ])
             {
-                _hex_prism(d = main_outer_distance, h = insert_height - chamfer_height, tolerance = tolerance);
-                // Top chamfer. 19.3(.2), 0.4.
-                translate(v = [ 0, 0, insert_height - chamfer_height ])
-                    _hex_prism(d = main_outer_distance, d2 = 19.3, h = chamfer_height, tolerance = tolerance);
-            }
-            // Chamfer.
-            for (i = [0:5])
-            {
-                rotate([ 0, 0, i * 60 - 30 ])
+                // Corner chamfer.
+                translate([
+                    -.5, hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, lip_height + preview_bump
+                ]) cube([ 1, 1, full_height - lip_height ]);
+                // Base chamfer.
+                // TODO: Requires following out edge. Reverse connector check?
+                // if (_checkout_location_populated())
+                translate(v = [ lip_outer_distance / 2, 0, 0 ]) rotate([ 0, 45, 0 ])
                 {
-                    translate([ -.5, hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, lip_height ])
-                        cube([ 1, 1, full_height - lip_height ]);
+                    cube(size = [ decoration_chamfer, lip_outer_distance, decoration_chamfer ], center = true);
                 }
             }
         }
-        _hex_prism(d = lip_outer_distance, h = lip_height);
-        // TODO chamfer base. Requires following out edge. Reverse connector check?
-        _insert_snaps(tolerance, fillet_size = chamfer_height);
     }
 }
 
@@ -237,7 +269,7 @@ module _hex_prism(d, d2 = 0, h, tolerance = 0)
     }
 }
 
-module _connector(structure, rotation, p, p2 = [], reversed = false)
+module _connector(structure, rotation, p, p2 = [], reversed = false, height = connector_height)
 {
     if (_checkout_location_populated(structure, p))
     {
@@ -248,7 +280,7 @@ module _connector(structure, rotation, p, p2 = [], reversed = false)
         s5 = s1 + .55005;
         // If adjacent location populated, extend into center point.
         s6 = (p2 != [] && _checkout_location_populated(structure, p2)) ? s4 + (1.101 * sin(60)) : s4;
-        rotate(rotation) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = connector_height)
+        rotate(rotation) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = height)
         {
             polygon(points = [[s1, s2], [s1, s4], [s5, s6], [s3, s4], [s3, s2]]);
         }
