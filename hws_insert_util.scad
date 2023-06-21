@@ -48,11 +48,12 @@ module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
     x = x_pos * (x1 + x2 + 2 * h_s) + y_even * x_offset;
     y = y_pos * y_distance;
     position = [ x, y, 0 ];
+    current = [ x_pos, y_pos ];
     translate(v = position) union()
     {
         difference()
         {
-            _insert_body(structure, [ x_pos, y_pos ], tolerance, decorate = decorate);
+            _insert_body(structure, current, tolerance, decorate = decorate);
             // Remove type specific features.
             _draw_features(structure[y_pos][x_pos], tolerance);
             // Add wall reliefs.
@@ -61,9 +62,9 @@ module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
         // Connect plugs.
         translate(v = [ 0, 0, decorate ? decoration_depth : 0 ])
         {
-            color("red") _connector(structure, [ x_pos, y_pos ], 0, decorate = decorate);
-            color("green") _connector(structure, [ x_pos, y_pos ], 1, decorate = decorate);
-            color("blue") _connector(structure, [ x_pos, y_pos ], 2, decorate = decorate);
+            color("red") _connector(structure, current, 0, decorate = decorate);
+            color("green") _connector(structure, current, 1, decorate = decorate);
+            color("blue") _connector(structure, current, 2, decorate = decorate);
         }
     }
 }
@@ -226,7 +227,7 @@ module insert_empty_attachment_countersunk(tolerance = 0)
 
 module _insert_m3()
 {
-    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
+    translate(v = [ 0, 0, insert_height + 2 * preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 3.3
@@ -237,7 +238,7 @@ module _insert_m3()
 
 module insert_m4()
 {
-    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
+    translate(v = [ 0, 0, insert_height + 2 * preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 4
@@ -251,7 +252,7 @@ module insert_m4()
 
 module insert_m5()
 {
-    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
+    translate(v = [ 0, 0, insert_height + 2 * preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 4
@@ -301,10 +302,11 @@ module _connector(structure, current, quadrant, decorate)
 }
 
 function _check_location_populated_quadrant(structure, current, quadrant) =
-    let(p = add_points(add_points(current, quadrants_map[quadrant]), [ current[1] % 2, 0 ]))
-        _check_location_populated_point(structure, p);
+    _check_location_populated_point(structure, _get_quadrant_point(structure, current, quadrant));
 function _check_location_populated_point(structure, p) =
     let(x_pos = p[0], y_pos = p[1]) x_pos >= 0 && y_pos >= 0 && y_pos < len(structure) &&
     x_pos < len(structure[y_pos]) && structure[y_pos][x_pos] > 0;
+function _get_quadrant_point(structure, current, quadrant) =
+    add_points(add_points(current, quadrants_map[quadrant]), [ (quadrant % 2 == 0) ? current[1] % 2 : 0, 0 ]);
 function hex_to_circular_radius(d) = d / sqrt(3) * 2;
 function add_points(p1, p2) = [ p1[0] + p2[0], p1[1] + p2[1] ];
