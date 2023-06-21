@@ -150,6 +150,13 @@ module _insert_body(structure, current, tolerance = tolerance, decorate = decora
                         cube(size = [ lip_outer_distance, decoration_chamfer, decoration_chamfer ], center = true);
                     }
                 }
+                if (decorate)
+                {
+                    translate(v = [ 0, main_inner_distance / 2 + 1.5 + .5, 0 ])
+                    {
+                        cube(size = [ 10.62, 1, 0.6 ], center = true);
+                    }
+                }
             }
         }
     }
