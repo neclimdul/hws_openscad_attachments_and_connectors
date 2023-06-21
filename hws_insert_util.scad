@@ -21,15 +21,50 @@ connector_height = lip_height;
 // A tiny addition distance to add to dimensions to help the OpenSCAD preview.
 preview_bump = .002;
 
-module _draw_insert(type = 0, tolerance = 0)
+decoration_depth = 0.3;
+decoration_chamfer = decoration_depth / cos(45);
+
+/**
+ * Map adjacent quadrants to a point in the structure array.
+ *     1
+ *  2     0
+ *  3     5
+ *     4
+ */
+quadrants_map = [ [ 0, 1 ], [ 0, 2 ], [ -1, 1 ], [ -1, -1 ], [ 0, -2 ], [ 0, -1 ] ];
+// map quadrant to angle.
+quadrant_angles = [ 30, 90, 150, 210, 270, 330 ];
+
+module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
 {
-    difference()
+    x1 = 25.98;
+    x2 = main_outer_side;
+    y_distance = 11.8; // 47.2 / 4;
+    // Calculated horizontal separation based on 1.1mm wall separation.
+    h_s = 0.9535;
+
+    y_even = y_pos % 2;
+    x_offset = y_even * (x1 - 6.495 + h_s);
+    x = x_pos * (x1 + x2 + 2 * h_s) + y_even * x_offset;
+    y = y_pos * y_distance;
+    position = [ x, y, 0 ];
+    translate(v = position) union()
     {
-        _insert_body(tolerance);
-        // Remove type specific features.
-        _draw_features(type, tolerance);
-        // Add wall reliefs.
-        _wall_reliefs(tolerance);
+        difference()
+        {
+            _insert_body(structure, [ x_pos, y_pos ], tolerance, decorate = decorate);
+            // Remove type specific features.
+            _draw_features(structure[y_pos][x_pos], tolerance);
+            // Add wall reliefs.
+            _wall_reliefs(tolerance);
+        }
+        // Connect plugs.
+        translate(v = [ 0, 0, decorate ? decoration_depth : 0 ])
+        {
+            color("red") _connector(structure, [ x_pos, y_pos ], 0, decorate = decorate);
+            color("green") _connector(structure, [ x_pos, y_pos ], 1, decorate = decorate);
+            color("blue") _connector(structure, [ x_pos, y_pos ], 2, decorate = decorate);
+        }
     }
 }
 
@@ -84,34 +119,46 @@ module _wall_relief(tolerance = tolerance)
     }
 }
 
-module _insert_body(tolerance = tolerance)
+module _insert_body(structure, current, tolerance = tolerance, decorate = decorate)
 {
     // Body.
     chamfer_height = 0.4;
-    union()
+    difference()
     {
-        difference()
+        union()
         {
-            union()
+            _hex_prism(d = main_outer_distance, h = insert_height - chamfer_height, tolerance = tolerance);
+            // Top chamfer. 19.3(.2), 0.4.
+            translate(v = [ 0, 0, insert_height - chamfer_height ])
+                _hex_prism(d = main_outer_distance, d2 = 19.3, h = chamfer_height, tolerance = tolerance);
+            _hex_prism(d = lip_outer_distance, h = lip_height);
+            _insert_snaps(tolerance, fillet_size = chamfer_height);
+        }
+        for (i = [0:5])
+        {
+            rotate([ 0, 0, i * 60 - 60 ])
             {
-                _hex_prism(d = main_outer_distance, h = insert_height - chamfer_height, tolerance = tolerance);
-                // Top chamfer. 19.3(.2), 0.4.
-                translate(v = [ 0, 0, insert_height - chamfer_height ])
-                    _hex_prism(d = main_outer_distance, d2 = 19.3, h = chamfer_height, tolerance = tolerance);
-            }
-            // Chamfer.
-            for (i = [0:5])
-            {
-                rotate([ 0, 0, i * 60 - 30 ])
+                // Corner chamfer.
+                translate([
+                    hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, -.5, lip_height + preview_bump
+                ]) cube([ 1, 1, full_height - lip_height ]);
+                // Base chamfer.
+                if (decorate || !_check_location_populated_quadrant(structure, current, i))
                 {
-                    translate([ -.5, hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, lip_height ])
-                        cube([ 1, 1, full_height - lip_height ]);
+                    translate(v = [ 0, lip_outer_distance / 2, 0 ]) rotate([ 45, 0, 0 ])
+                    {
+                        cube(size = [ lip_outer_distance, decoration_chamfer, decoration_chamfer ], center = true);
+                    }
+                }
+                if (decorate)
+                {
+                    translate(v = [ 0, main_inner_distance / 2 + 1.5 + .5, 0 ])
+                    {
+                        cube(size = [ 10.62, 1, 0.6 ], center = true);
+                    }
                 }
             }
         }
-        _hex_prism(d = lip_outer_distance, h = lip_height);
-        // TODO chamfer base. Requires following out edge. Reverse connector check?
-        _insert_snaps(tolerance, fillet_size = chamfer_height);
     }
 }
 
@@ -120,26 +167,20 @@ module _insert_snaps(tolerance = tolerance, fillet_size = 0)
     // Add snaps.
     for (i = [0:5])
     {
-        rotate([ 0, 0, i * 60 ])
+        rotate([ 0, 0, i * 60 ]) translate([ 0, main_outer_distance / 2 - tolerance, 0 ]) hull()
         {
-            translate([ 0, main_outer_distance / 2 - tolerance, 0 ])
+            translate([ 0, 0, (insert_height - wall_relief_height) + wall_side_relief_size + snap_size ])
             {
-                hull()
+                rotate([ 0, 90, 0 ])
                 {
-                    translate([ 0, 0, (insert_height - wall_relief_height) + wall_side_relief_size + snap_size ])
-                    {
-                        rotate([ 0, 90, 0 ])
-                        {
-                            cylinder(r = snap_size, h = snap_width, center = true, $fn = 20);
-                        }
-                    }
-                    translate([ 0, 0, insert_height - preview_bump - fillet_size ])
-                    {
-                        rotate([ 0, 90, 0 ])
-                        {
-                            cylinder(r = preview_bump, h = snap_width, center = true, $fn = 20);
-                        }
-                    }
+                    cylinder(r = snap_size, h = snap_width, center = true, $fn = 20);
+                }
+            }
+            translate([ 0, 0, insert_height - preview_bump - fillet_size ])
+            {
+                rotate([ 0, 90, 0 ])
+                {
+                    cylinder(r = preview_bump, h = snap_width, center = true, $fn = 20);
                 }
             }
         }
@@ -237,25 +278,33 @@ module _hex_prism(d, d2 = 0, h, tolerance = 0)
     }
 }
 
-module _connector(structure, rotation, p, p2 = [], reversed = false)
+module _connector(structure, current, quadrant, decorate)
 {
-    if (_checkout_location_populated(structure, p))
+    if (_check_location_populated_quadrant(structure, current, quadrant))
     {
         s1 = (lip_outer_distance / 2) - 0.001;
         s2 = -main_outer_side / 2;
         s3 = s1 + 1.102;
         s4 = -s2;
         s5 = s1 + .55005;
+        c_height = connector_height - (decorate ? decoration_depth : 0);
+        reversed = quadrant == 2 ? true : false;
         // If adjacent location populated, extend into center point.
-        s6 = (p2 != [] && _checkout_location_populated(structure, p2)) ? s4 + (1.101 * sin(60)) : s4;
-        rotate(rotation) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = connector_height)
+        s6 = ((quadrant == 0 || quadrant == 2) && _check_location_populated_quadrant(structure, current, 1))
+                 ? s4 + (1.101 * sin(60))
+                 : s4;
+        rotate(quadrant_angles[quadrant]) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = c_height)
         {
             polygon(points = [[s1, s2], [s1, s4], [s5, s6], [s3, s4], [s3, s2]]);
         }
     }
 }
 
-function _checkout_location_populated(structure, p) =
+function _check_location_populated_quadrant(structure, current, quadrant) =
+    let(p = add_points(add_points(current, quadrants_map[quadrant]), [ current[1] % 2, 0 ]))
+        _check_location_populated_point(structure, p);
+function _check_location_populated_point(structure, p) =
     let(x_pos = p[0], y_pos = p[1]) x_pos >= 0 && y_pos >= 0 && y_pos < len(structure) &&
     x_pos < len(structure[y_pos]) && structure[y_pos][x_pos] > 0;
 function hex_to_circular_radius(d) = d / sqrt(3) * 2;
+function add_points(p1, p2) = [ p1[0] + p2[0], p1[1] + p2[1] ];
