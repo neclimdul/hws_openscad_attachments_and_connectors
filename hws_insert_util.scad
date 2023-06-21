@@ -185,7 +185,7 @@ module insert_empty_attachment_countersunk(tolerance = 0)
 
 module _insert_m3()
 {
-    union()
+    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 3.3
@@ -196,7 +196,7 @@ module _insert_m3()
 
 module insert_m4()
 {
-    union()
+    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 4
@@ -210,7 +210,7 @@ module insert_m4()
 
 module insert_m5()
 {
-    union()
+    translate(v = [ 0, 0, insert_height + 2* preview_bump ]) mirror(v = [ 0, 0, 1 ]) union()
     {
         _hex_prism(d = 11.4, h = 3);
         // + 4
