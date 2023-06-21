@@ -52,7 +52,7 @@ module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
     {
         difference()
         {
-            _insert_body(tolerance, decorate = decorate);
+            _insert_body(structure, [ x_pos, y_pos ], tolerance, decorate = decorate);
             // Remove type specific features.
             _draw_features(structure[y_pos][x_pos], tolerance);
             // Add wall reliefs.
@@ -61,9 +61,9 @@ module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
         // Connect plugs.
         translate(v = [ 0, 0, decorate ? decoration_depth : 0 ])
         {
-            color("red") _connector2(structure, [ x_pos, y_pos ], 0, decorate = decorate);
-            color("green") _connector2(structure, [ x_pos, y_pos ], 1, decorate = decorate);
-            color("blue") _connector2(structure, [ x_pos, y_pos ], 2, decorate = decorate);
+            color("red") _connector(structure, [ x_pos, y_pos ], 0, decorate = decorate);
+            color("green") _connector(structure, [ x_pos, y_pos ], 1, decorate = decorate);
+            color("blue") _connector(structure, [ x_pos, y_pos ], 2, decorate = decorate);
         }
     }
 }
@@ -119,7 +119,7 @@ module _wall_relief(tolerance = tolerance)
     }
 }
 
-module _insert_body(tolerance = tolerance, decorate = decorate)
+module _insert_body(structure, current, tolerance = tolerance, decorate = decorate)
 {
     // Body.
     chamfer_height = 0.4;
@@ -134,20 +134,21 @@ module _insert_body(tolerance = tolerance, decorate = decorate)
             _hex_prism(d = lip_outer_distance, h = lip_height);
             _insert_snaps(tolerance, fillet_size = chamfer_height);
         }
-        for (i = [0:0])
+        for (i = [0:5])
         {
-            rotate([ 0, 0, i * 60 ])
+            rotate([ 0, 0, i * 60 - 60 ])
             {
                 // Corner chamfer.
                 translate([
                     hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, -.5, lip_height + preview_bump
                 ]) cube([ 1, 1, full_height - lip_height ]);
                 // Base chamfer.
-                // TODO: Requires following out edge. Reverse connector check?
-                // if (_check_location_populated_point())
-                translate(v = [ 0, lip_outer_distance / 2, 0 ]) rotate([ 45, 0, 0 ])
+                if (decorate || !_check_location_populated_quadrant(structure, current, i))
                 {
-                    cube(size = [ lip_outer_distance, decoration_chamfer, decoration_chamfer ], center = true);
+                    translate(v = [ 0, lip_outer_distance / 2, 0 ]) rotate([ 45, 0, 0 ])
+                    {
+                        cube(size = [ lip_outer_distance, decoration_chamfer, decoration_chamfer ], center = true);
+                    }
                 }
             }
         }
@@ -270,7 +271,7 @@ module _hex_prism(d, d2 = 0, h, tolerance = 0)
     }
 }
 
-module _connector2(structure, current, quadrant, decorate)
+module _connector(structure, current, quadrant, decorate)
 {
     if (_check_location_populated_quadrant(structure, current, quadrant))
     {
@@ -282,7 +283,9 @@ module _connector2(structure, current, quadrant, decorate)
         c_height = connector_height - (decorate ? decoration_depth : 0);
         reversed = quadrant == 2 ? true : false;
         // If adjacent location populated, extend into center point.
-        s6 = ((quadrant == 0 || quadrant == 2) && _check_location_populated_quadrant(structure, current, 1)) ? s4 + (1.101 * sin(60)) : s4;
+        s6 = ((quadrant == 0 || quadrant == 2) && _check_location_populated_quadrant(structure, current, 1))
+                 ? s4 + (1.101 * sin(60))
+                 : s4;
         rotate(quadrant_angles[quadrant]) mirror(v = [ 0, reversed ? 1 : 0, 0 ]) linear_extrude(height = c_height)
         {
             polygon(points = [[s1, s2], [s1, s4], [s5, s6], [s3, s4], [s3, s2]]);
