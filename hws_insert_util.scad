@@ -24,6 +24,7 @@ preview_bump = .002;
 decoration_depth = 0.3;
 decoration_chamfer = decoration_depth / cos(45);
 
+color_list = [ "red", "green", "blue", "RebeccaPurple", "Black", "Yellow" ];
 /**
  * Map adjacent quadrants to a point in the structure array.
  *     1
@@ -62,9 +63,8 @@ module _draw_insert(structure, x_pos, y_pos, tolerance = 0, decorate = true)
         // Connect plugs.
         translate(v = [ 0, 0, decorate ? decoration_depth : 0 ])
         {
-            color("red") _connector(structure, current, 0, decorate = decorate);
-            color("green") _connector(structure, current, 1, decorate = decorate);
-            color("blue") _connector(structure, current, 2, decorate = decorate);
+            for (i = [0:2])
+                color(color_list[i]) _connector(structure, current, i, decorate = decorate);
         }
     }
 }
@@ -120,7 +120,7 @@ module _wall_relief(tolerance = tolerance)
     }
 }
 
-module _insert_body(structure, current, tolerance = tolerance, decorate = decorate)
+module _insert_body(structure, current, tolerance = tolerance, decorate = true)
 {
     // Body.
     chamfer_height = 0.4;
@@ -137,23 +137,23 @@ module _insert_body(structure, current, tolerance = tolerance, decorate = decora
         }
         for (i = [0:5])
         {
-            rotate([ 0, 0, i * 60 - 60 ])
+            color(color_list[i]) rotate(quadrant_angles[i])
             {
                 // Corner chamfer.
-                translate([
+                rotate(30) translate([
                     hex_to_circular_radius(main_outer_distance) / 2 - 0.1 - tolerance, -.5, lip_height + preview_bump
-                ]) cube([ 1, 1, full_height - lip_height ]);
+                ]) cube([ 1, 1, insert_height - lip_height ]);
                 // Base chamfer.
                 if (decorate || !_check_location_populated_quadrant(structure, current, i))
                 {
-                    translate(v = [ 0, lip_outer_distance / 2, 0 ]) rotate([ 45, 0, 0 ])
+                    translate(v = [ lip_outer_distance / 2, 0, 0 ]) rotate([ 0, 45, 0 ])
                     {
-                        cube(size = [ lip_outer_distance, decoration_chamfer, decoration_chamfer ], center = true);
+                        cube(size = [ decoration_chamfer, main_outer_side+1, decoration_chamfer ], center = true);
                     }
                 }
                 if (decorate)
                 {
-                    translate(v = [ 0, main_inner_distance / 2 + 1.5 + .5, 0 ])
+                rotate(-90) translate(v = [ 0, main_inner_distance / 2 + 1.5 + .5, 0 ])
                     {
                         cube(size = [ 10.62, 1, 0.6 ], center = true);
                     }
@@ -302,11 +302,15 @@ module _connector(structure, current, quadrant, decorate)
 }
 
 function _check_location_populated_quadrant(structure, current, quadrant) =
-    _check_location_populated_point(structure, _get_quadrant_point(structure, current, quadrant));
+    _check_location_populated_point(structure, _get_quadrant_point(current, quadrant));
 function _check_location_populated_point(structure, p) =
     let(x_pos = p[0], y_pos = p[1]) x_pos >= 0 && y_pos >= 0 && y_pos < len(structure) &&
     x_pos < len(structure[y_pos]) && structure[y_pos][x_pos] > 0;
-function _get_quadrant_point(structure, current, quadrant) =
-    add_points(add_points(current, quadrants_map[quadrant]), [ (quadrant % 2 == 0) ? current[1] % 2 : 0, 0 ]);
+function _get_quadrant_point(current, quadrant) =
+    let(y_odd = current[1] % 2)
+    add_points(
+        add_points(current, quadrants_map[quadrant]),
+        y_odd ? [ (quadrant % 2 != (quadrant < 3 ? 1 : 0)) ? 1 : 0, 0 ] : [0,0]
+    );
 function hex_to_circular_radius(d) = d / sqrt(3) * 2;
 function add_points(p1, p2) = [ p1[0] + p2[0], p1[1] + p2[1] ];
